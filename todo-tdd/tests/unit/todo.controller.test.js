@@ -5,11 +5,15 @@ const newTodo = require("../mock-data/new-todo.json");
 const allTodos = require("../mock-data/all-todos.json");
 const { all } = require("../../app");
 
-TodoModel.create = jest.fn();
-TodoModel.find = jest.fn();
-TodoModel.findById = jest.fn();
+// TodoModel.create = jest.fn();
+// TodoModel.find = jest.fn();
+// TodoModel.findById = jest.fn();
+// TodoModel.findByIdAndUpdate = jest.fn();
+// TodoModel.findByIdAndDelete = jest.fn();
+jest.mock("../../model/todo.model");           // This replaces all of the mocks (shortcut)
 
 let req, res, next;
+const todoID = "62378dcd038ecb9a33a7ae55";
 beforeEach(() => {
     req = httpMocks.createRequest();
     res = httpMocks.createResponse();
@@ -17,7 +21,36 @@ beforeEach(() => {
 })
 
 
-
+describe("TodoController.deleteTodo", () => {
+    it("should have a deleteTodo function", () => {
+        expect(typeof TodoController.deleteTodo).toBe("function");
+    });
+    it("should call findByIdAndDelete", async () => {
+        req.params.todoID = todoID;
+        await TodoController.deleteTodo(req, res, next);
+        expect(TodoModel.findByIdAndDelete).toBeCalledWith(todoID);
+    });
+    it("should return 200 ok and deleted todomodel", async () => {
+        TodoModel.findByIdAndDelete.mockReturnValue(newTodo);
+        await TodoController.deleteTodo(req, res, next);
+        expect(res.statusCode).toBe(200);
+        expect(res._getJSONData()).toStrictEqual(newTodo);
+        expect(res._isEndCalled()).toBeTruthy();   
+    });
+    it("should handle errors", async () => {
+        const errorMessage = {message: "Error deleting"};
+        const rejectedPromise = Promise.reject(errorMessage);
+        TodoModel.findByIdAndDelete.mockReturnValue(rejectedPromise);
+        await TodoController.deleteTodo(req, res, next);
+        expect(next).toHaveBeenCalledWith(errorMessage); 
+    });
+    it("should handle 404", async () => {
+        TodoModel.findByIdAndDelete.mockReturnValue(null);
+        await TodoController.deleteTodo(req, res, next);
+        expect(res.statusCode).toBe(404);
+        expect(res._isEndCalled()).toBeTruthy();
+    })
+})
 describe("TodoController.getTodos", () => {
     it("should have a getTodos function", () => {
         expect(typeof TodoController.getTodos).toBe("function");
@@ -47,9 +80,9 @@ describe("TodoController.getTodoById", () => {
         expect(typeof TodoController.getTodoById).toBe("function");
     });
     it("should call TodoModel.findById with route parameters", async () => {
-        req.params.todoId = "62378dcd038ecb9a33a7ae68";
+        req.params.todoId = todoID;
         await TodoController.getTodoById(req, res, next);
-        expect(TodoModel.findById).toBeCalledWith("62378dcd038ecb9a33a7ae68");
+        expect(TodoModel.findById).toBeCalledWith(todoID);
     });
     it("should return json body and response code 200", async () => {
         TodoModel.findById.mockReturnValue(newTodo);
@@ -69,7 +102,7 @@ describe("TodoController.getTodoById", () => {
         TodoModel.findById.mockReturnValue(null);
         await TodoController.getTodoById(req, res, next);
         expect(res.statusCode).toBe(404);
-        expect(res._isEndCalled).toBeTruthy();
+        expect(res._isEndCalled()).toBeTruthy();
     })
 });
 
@@ -102,5 +135,42 @@ describe("TodoController.createTodo", () => {
         TodoModel.create.mockReturnValue(rejectedPromise);
         await TodoController.createTodo(req, res, next);
         expect(next).toBeCalledWith(errorMessage);
-    })
+    });
+});
+
+describe("TodoController.updateTodo", () => {
+    it("should have an updateTodo function", () => {
+        expect(typeof TodoController.updateTodo).toBe("function");
+    });
+    it("should update with TodoModel.findByIdAndUpdate", async () => {
+        req.params.todoId = todoID;
+        req.body = newTodo;
+        await TodoController.updateTodo(req, res, next);
+        expect(TodoModel.findByIdAndUpdate).toHaveBeenCalledWith(todoID, newTodo, {
+            new: true,
+            useFindAndModify: false
+        });
+    });
+    it("should return a response with the json data and http code 200", async () => {
+        req.params.todoId = todoID;
+        req.body = newTodo;
+        TodoModel.findByIdAndUpdate.mockReturnValue(newTodo);
+        await TodoController.updateTodo(req, res, next);
+        expect(res._isEndCalled()).toBeTruthy();
+        expect(res.statusCode).toBe(200);
+        expect(res._getJSONData()).toStrictEqual(newTodo);
+    });
+    it("should handle errors", async () => {
+        const errorMessage = { message: "Error"};
+        const rejectedPromise = Promise.reject(errorMessage);
+        TodoModel.findByIdAndUpdate.mockReturnValue(rejectedPromise);
+        await TodoController.updateTodo(req, res, next);
+        expect(next).toBeCalledWith(errorMessage);
+    });
+    it("should handle 404", async () => {
+        TodoModel.findByIdAndUpdate.mockReturnValue(null);
+        await TodoController.updateTodo(req, res, next);
+        expect(res.statusCode).toBe(404);
+        expect(res._isEndCalled()).toBeTruthy();
+    });
 });
