@@ -69,6 +69,7 @@ describe(endpointUrl, () => {
         expect(res.statusCode).toBe(404);
     })
     test("HTTP DELETE", async () => {
+        console.log("newTodoId: ", newTodoId);
         const res = await request(app)
             .delete(endpointUrl + newTodoId)
             .send();
