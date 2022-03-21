@@ -26,7 +26,7 @@ describe("TodoController.deleteTodo", () => {
         expect(typeof TodoController.deleteTodo).toBe("function");
     });
     it("should call findByIdAndDelete", async () => {
-        req.params.todoID = todoID;
+        req.params.todoId = todoID;
         await TodoController.deleteTodo(req, res, next);
         expect(TodoModel.findByIdAndDelete).toBeCalledWith(todoID);
     });
